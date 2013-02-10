@@ -1,0 +1,67 @@
+NAME
+    `Net::Async::HTTP::Server' - serve HTTP with `IO::Async'
+
+SYNOPSIS
+     use Net::Async::HTTP::Server;
+     use IO::Async::Loop;
+
+     use HTTP::Response;
+
+     my $loop = IO::Async::Loop->new();
+
+     my $httpserver = Net::Async::HTTP::Server->new(
+        on_request => sub {
+           my $self = shift;
+           my ( $req, $token ) = @_;
+
+           my $response = HTTP::Response->new( 200 );
+           $response->add_content( "Hello, world!\n" );
+           $response->content_type( "text/plain" );
+
+           $self->respond( $token, $response );
+        },
+     );
+
+     $loop->add( $httpserver );
+
+     $httpserver->listen(
+        addr => { family => "inet6", socktype => "stream", port => 8080 },
+        on_listen_error => sub { die "Cannot listen - $_[-1]\n" },
+     );
+
+     $loop->run;
+
+DESCRIPTION
+    This module allows a program to respond asynchronously to HTTP requests,
+    as part of a program based on IO::Async. An object in this class listens
+    on a single port and invokes the `on_request' callback or subclass
+    method whenever an HTTP request is received, allowing the program to
+    respond to it.
+
+EVENTS
+  on_request $req, $token
+    Invoked when a new HTTP request is received. It will be passed an
+    HTTP::Request object and an opaque token used to respond. This token
+    should be passed to the `respond' method.
+
+METHODS
+  $server->respond( $token, $response )
+    Respond to the request earlier received with the given token, using the
+    given HTTP::Response object.
+
+TODO
+    * Streaming/chunked content response API. Likely
+
+       $self->respond_header( $token, $response );
+       $self->respond_chunk( $token, $content ); ...
+       $self->respond_eof( $token );
+
+    * Consider how to do streaming request inbound
+
+    * PSGI app container
+
+    * Lots more testing
+
+AUTHOR
+    Paul Evans <leonerd@leonerd.org.uk>
+

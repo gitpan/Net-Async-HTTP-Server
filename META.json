@@ -1,0 +1,49 @@
+{
+   "abstract" : "serve HTTP with C<IO::Async>",
+   "author" : [
+      "Paul Evans <leonerd@leonerd.org.uk>"
+   ],
+   "dynamic_config" : 1,
+   "generated_by" : "Module::Build version 0.4001, CPAN::Meta::Converter version 2.120921",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "Net-Async-HTTP-Server",
+   "prereqs" : {
+      "build" : {
+         "requires" : {
+            "HTTP::Response" : "0",
+            "IO::Async::Test" : "0",
+            "Test::More" : "0"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "HTTP::Request" : "0",
+            "IO::Async" : "0.54",
+            "IO::Async::Listener" : "0"
+         }
+      }
+   },
+   "provides" : {
+      "Net::Async::HTTP::Server" : {
+         "file" : "lib/Net/Async/HTTP/Server.pm",
+         "version" : "0.01"
+      },
+      "Net::Async::HTTP::Server::Protocol" : {
+         "file" : "lib/Net/Async/HTTP/Server/Protocol.pm",
+         "version" : "0.01"
+      }
+   },
+   "release_status" : "stable",
+   "resources" : {
+      "license" : [
+         "http://dev.perl.org/licenses/"
+      ]
+   },
+   "version" : "0.01"
+}
