@@ -12,13 +12,13 @@ SYNOPSIS
      my $httpserver = Net::Async::HTTP::Server->new(
         on_request => sub {
            my $self = shift;
-           my ( $req, $token ) = @_;
+           my ( $req ) = @_;
 
            my $response = HTTP::Response->new( 200 );
            $response->add_content( "Hello, world!\n" );
            $response->content_type( "text/plain" );
 
-           $self->respond( $token, $response );
+           $req->respond( $response );
         },
      );
 
@@ -39,22 +39,12 @@ DESCRIPTION
     respond to it.
 
 EVENTS
-  on_request $req, $token
-    Invoked when a new HTTP request is received. It will be passed an
-    HTTP::Request object and an opaque token used to respond. This token
-    should be passed to the `respond' method.
-
-METHODS
-  $server->respond( $token, $response )
-    Respond to the request earlier received with the given token, using the
-    given HTTP::Response object.
+  on_request $req
+    Invoked when a new HTTP request is received. It will be passed a
+    Net::Async::HTTP::Server::Request object.
 
 TODO
-    * Streaming/chunked content response API. Likely
-
-       $self->respond_header( $token, $response );
-       $self->respond_chunk( $token, $content ); ...
-       $self->respond_eof( $token );
+    * Don't use HTTP::Message objects as underlying implementation
 
     * Consider how to do streaming request inbound
 

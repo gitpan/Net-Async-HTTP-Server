@@ -1,4 +1,8 @@
 Revision history for Net-Async-HTTP-Server
 
+0.02    CHANGES:
+         * Changed request/response API - new NaHTTP::Server::Request objects
+         * Added response streaming with HTTP/1.1 chunked encoding
+
 0.01    First version, released on an unsuspecting world.
 

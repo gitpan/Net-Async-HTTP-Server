@@ -19,13 +19,13 @@ testing_loop( $loop );
 
 my $server = Net::Async::HTTP::Server->new(
    on_request => sub {
-      my ( $self, $req, $token ) = @_;
+      my ( $self, $req ) = @_;
 
       my $response = HTTP::Response->new( 200 );
       $response->content_type( "text/plain" );
-      $response->add_content( "Response to " . $req->uri->path );
+      $response->add_content( "Response to " . join " ", $req->method, $req->path, "with " . length( $req->body ) . " bytes" );
 
-      $self->respond( $token, $response );
+      $req->respond( $response );
    },
 );
 
@@ -50,11 +50,32 @@ sub connect_client
 
    is( $buffer,
       "HTTP/1.1 200 OK$CRLF" .
-      "Content-Length: 13$CRLF" .
+      "Content-Length: 30$CRLF" .
       "Content-Type: text/plain$CRLF" .
       $CRLF .
-      "Response to /",
+      "Response to GET / with 0 bytes",
       '$buffer from GET /' );
+}
+
+{
+   my $client = connect_client;
+
+   $client->write( "PUT /doc HTTP/1.1$CRLF" .
+                   "Content-Type: text/plain$CRLF" .
+                   "Content-Length: 13$CRLF" .
+                   "$CRLF" .
+                   "Hello, world!" );
+
+   my $buffer = "";
+   wait_for_stream { $buffer =~ m/$CRLF$CRLF/ } $client => $buffer;
+
+   is( $buffer,
+      "HTTP/1.1 200 OK$CRLF" .
+      "Content-Length: 34$CRLF" .
+      "Content-Type: text/plain$CRLF" .
+      $CRLF .
+      "Response to PUT /doc with 13 bytes",
+      '$buffer from PUT' );
 }
 
 {
@@ -79,22 +100,22 @@ sub connect_client
 
    is( $buffer,
        "HTTP/1.1 200 OK$CRLF" .
-       "Content-Length: 16$CRLF" .
+       "Content-Length: 33$CRLF" .
        "Content-Type: text/plain$CRLF" .
        $CRLF .
-       "Response to /one" .
+       "Response to GET /one with 0 bytes" .
     
        "HTTP/1.1 200 OK$CRLF" .
-       "Content-Length: 16$CRLF" .
+       "Content-Length: 33$CRLF" .
        "Content-Type: text/plain$CRLF" .
        $CRLF .
-       "Response to /two",
+       "Response to GET /two with 0 bytes",
       '$buffer from two pipelined GETs' );
 }
 
 my @pending;
 $server->configure(
-   on_request => sub { shift; push @pending, [ @_ ] },
+   on_request => sub { shift; push @pending, $_[0] },
 );
 
 {
@@ -110,11 +131,11 @@ $server->configure(
    my $response;
    $response = HTTP::Response->new( 200 );
    $response->add_content( "Response to second" );
-   $server->respond( $second->[1], $response );
+   $second->respond( $response );
 
    $response = HTTP::Response->new( 200 );
    $response->add_content( "Response to first" );
-   $server->respond( $first->[1], $response );
+   $first->respond( $response );
 
    my $buffer = "";
    wait_for_stream { $buffer =~ m/$CRLF$CRLF.*$CRLF$CRLF/s } $client => $buffer;

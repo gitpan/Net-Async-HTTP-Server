@@ -9,7 +9,11 @@ use strict;
 use warnings;
 use base qw( IO::Async::Protocol::Stream );
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
+
+use Carp;
+
+use Net::Async::HTTP::Server::Request;
 
 use HTTP::Request;
 
@@ -30,36 +34,29 @@ sub on_read
 
       $request->add_content( substr( $$buffref, 0, $request_body_len, "" ) );
 
-      push @{ $self->{responder_queue} }, [ undef, $request ];
-      $self->parent->_received_request( $request, $self, $self->{responder_queue}[-1] );
+      push @{ $self->{responder_queue} }, my $req = Net::Async::HTTP::Server::Request->new( $self, $request );
+      $self->parent->_received_request( $req );
 
       return undef;
    };
 }
 
-sub respond
+sub _flush_responders
 {
    my $self = shift;
-   my ( $responder, $response ) = @_;
-
-   my $request = $responder->[1];
-
-   defined $response->protocol or
-      $response->protocol( $request->protocol );
-   defined $response->content_length or
-      $response->content_length( length $response->content );
-
-   $responder->[0] = $response->as_string( $CRLF );
 
    my $queue = $self->{responder_queue};
-   while( @$queue and defined $queue->[0][0] ) {
-      my $head = shift @$queue;
+   while( @$queue and defined $queue->[0]{response} ) {
+      my $head = $queue->[0];
 
-      $self->write( $head->[0],
+      $self->write( $head->{response},
 
-         $head->[1]->protocol eq "HTTP/1.0" ?
+         $head->protocol eq "HTTP/1.0" ?
             ( on_flush => sub { $self->close; } ) : (),
       );
+      $head->{response} = "";
+
+      $head->{is_done} ? shift @$queue : return;
    }
 }
 

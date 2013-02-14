@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Listener );
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use Carp;
 
@@ -31,13 +31,13 @@ C<Net::Async::HTTP::Server> - serve HTTP with C<IO::Async>
  my $httpserver = Net::Async::HTTP::Server->new(
     on_request => sub {
        my $self = shift;
-       my ( $req, $token ) = @_;
+       my ( $req ) = @_;
 
        my $response = HTTP::Response->new( 200 );
        $response->add_content( "Hello, world!\n" );
        $response->content_type( "text/plain" );
 
-       $self->respond( $token, $response );
+       $req->respond( $response );
     },
  );
 
@@ -61,11 +61,10 @@ an HTTP request is received, allowing the program to respond to it.
 
 =head1 EVENTS
 
-=head2 on_request $req, $token
+=head2 on_request $req
 
-Invoked when a new HTTP request is received. It will be passed an
-L<HTTP::Request> object and an opaque token used to respond. This token should
-be passed to the C<respond> method.
+Invoked when a new HTTP request is received. It will be passed a
+L<Net::Async::HTTP::Server::Request> object.
 
 =cut
 
@@ -111,32 +110,10 @@ sub on_stream
 sub _received_request
 {
    my $self = shift;
-   my ( $request, $conn, $responder ) = @_;
+   my ( $request ) = @_;
 
-   $self->invoke_event( on_request => $request, [ $conn, $responder ] );
+   $self->invoke_event( on_request => $request );
 }
-
-=head1 METHODS
-
-=cut
-
-# Demux all these to the conn
-foreach (qw( respond )) {
-   my $m = $_;
-   no strict 'refs';
-   *$m = sub {
-      my $self = shift;
-      my $token = shift;
-      $token->[0]->$m( $token->[1], @_ );
-   };
-}
-
-=head2 $server->respond( $token, $response )
-
-Respond to the request earlier received with the given token, using the given
-L<HTTP::Response> object.
-
-=cut
 
 =head1 TODO
 
@@ -144,11 +121,7 @@ L<HTTP::Response> object.
 
 =item *
 
-Streaming/chunked content response API. Likely
-
- $self->respond_header( $token, $response );
- $self->respond_chunk( $token, $content ); ...
- $self->respond_eof( $token );
+Don't use L<HTTP::Message> objects as underlying implementation
 
 =item *
 
