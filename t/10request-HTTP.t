@@ -35,7 +35,11 @@ sub connect_client
 {
    my $client = connect_client;
 
-   $client->write( "GET /some/path HTTP/1.1$CRLF$CRLF" );
+   $client->write(
+      "GET /some/path?var=value HTTP/1.1$CRLF" .
+      "User-Agent: unit-test$CRLF" .
+      $CRLF
+   );
 
    wait_for { @pending };
 
@@ -45,6 +49,9 @@ sub connect_client
 
    is( $req->method, "GET", '$req->method' );
    is( $req->uri->path, "/some/path", '$req->uri->path' );
+   is( $req->uri->query, "var=value", '$req->uri->query' );
+   is( $req->protocol, "HTTP/1.1", '$req->protocol' );
+   is( $req->header( "User-Agent" ), "unit-test", '$req->header' );
 }
 
 done_testing;

@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Protocol::Stream );
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Carp;
 
@@ -34,29 +34,24 @@ sub on_read
 
       $request->add_content( substr( $$buffref, 0, $request_body_len, "" ) );
 
-      push @{ $self->{responder_queue} }, my $req = Net::Async::HTTP::Server::Request->new( $self, $request );
+      push @{ $self->{requests} }, my $req = Net::Async::HTTP::Server::Request->new( $self, $request );
       $self->parent->_received_request( $req );
 
       return undef;
    };
 }
 
-sub _flush_responders
+sub _flush_requests
 {
    my $self = shift;
 
-   my $queue = $self->{responder_queue};
-   while( @$queue and defined $queue->[0]{response} ) {
-      my $head = $queue->[0];
+   my $queue = $self->{requests};
+   while( @$queue ) {
+      my $req = $queue->[0];
 
-      $self->write( $head->{response},
+      my $is_done = $req->_write_to_stream( $self );
 
-         $head->protocol eq "HTTP/1.0" ?
-            ( on_flush => sub { $self->close; } ) : (),
-      );
-      $head->{response} = "";
-
-      $head->{is_done} ? shift @$queue : return;
+      $is_done ? shift @$queue : return;
    }
 }
 

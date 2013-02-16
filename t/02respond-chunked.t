@@ -57,7 +57,7 @@ sub connect_client
        $CRLF,
        'Response header' );
 
-   $request->respond_chunk( "a" x 10 );
+   $request->write_chunk( "a" x 10 );
 
    my $chunk;
    wait_for_stream { $buffer =~ s/(^[[:xdigit:]]+$CRLF.*$CRLF)//s or return 0; $chunk = $1; 1; } $client => $buffer;
@@ -67,7 +67,7 @@ sub connect_client
        "aaaaaaaaaa" . $CRLF,
        '$chunk from first respond_chunk' );
 
-   $request->respond_chunk( "b" x 10 );
+   $request->write_chunk( "b" x 10 );
 
    wait_for_stream { $buffer =~ s/(^[[:xdigit:]]+$CRLF.*$CRLF)//s or return 0; $chunk = $1; 1; } $client => $buffer;
 
@@ -76,7 +76,7 @@ sub connect_client
        "bbbbbbbbbb" . $CRLF,
        '$chunk from second respond_chunk' );
 
-   $request->respond_chunk_eof;
+   $request->write_chunk_eof;
 
    wait_for_stream { $buffer =~ s/(0$CRLF.*$CRLF)//s or return 0; $chunk = $1; 1; } $client => $buffer;
 
@@ -118,7 +118,7 @@ sub connect_client
        "XXXXXXXXXXXXXXXXXXXX$CRLF",
        '$chunk initially' );
 
-   $request->respond_chunk_eof;
+   $request->write_chunk_eof;
 
    wait_for_stream { $buffer =~ s/(0$CRLF.*$CRLF)//s or return 0; $chunk = $1; 1; } $client => $buffer;
 

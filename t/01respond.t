@@ -8,7 +8,6 @@ use IO::Async::Test;
 use IO::Async::Loop;
 
 use IO::Async::Stream;
-use HTTP::Response;
 
 use Net::Async::HTTP::Server;
 
@@ -17,15 +16,22 @@ my $CRLF = "\x0d\x0a";
 my $loop = IO::Async::Loop->new();
 testing_loop( $loop );
 
+my $req;
 my $server = Net::Async::HTTP::Server->new(
    on_request => sub {
-      my ( $self, $req ) = @_;
+      my $self = shift;
+      ( $req ) = @_;
 
-      my $response = HTTP::Response->new( 200 );
-      $response->content_type( "text/plain" );
-      $response->add_content( "Response to " . join " ", $req->method, $req->path, "with " . length( $req->body ) . " bytes" );
+      my $content = "Response to " . join " ", $req->method, $req->path, "with " . length( $req->body ) . " bytes";
 
-      $req->respond( $response );
+      $req->write( "HTTP/1.1 200 OK$CRLF" .
+         "Content-Length: " . length( $content ) . $CRLF .
+         "Content-Type: text/plain$CRLF" .
+         $CRLF .
+         $content
+      );
+
+      $req->done;
    },
 );
 
@@ -43,18 +49,28 @@ sub connect_client
 {
    my $client = connect_client;
 
-   $client->write( "GET / HTTP/1.1$CRLF$CRLF" );
+   $client->write(
+      "GET /path?var=value HTTP/1.1$CRLF" .
+      "User-Agent: unit-test$CRLF" .
+      $CRLF
+   );
 
    my $buffer = "";
    wait_for_stream { $buffer =~ m/$CRLF$CRLF/ } $client => $buffer;
 
    is( $buffer,
       "HTTP/1.1 200 OK$CRLF" .
-      "Content-Length: 30$CRLF" .
+      "Content-Length: 34$CRLF" .
       "Content-Type: text/plain$CRLF" .
       $CRLF .
-      "Response to GET / with 0 bytes",
+      "Response to GET /path with 0 bytes",
       '$buffer from GET /' );
+
+   is( $req->method, "GET", '$req->method' );
+   is( $req->path, "/path", '$req->path' );
+   is( $req->query_string, "var=value", '$req->query_string' );
+   is( $req->protocol, "HTTP/1.1", '$req->protocol' );
+   is( $req->header( "User-Agent" ), "unit-test", '$req->header' );
 }
 
 {
@@ -128,14 +144,21 @@ $server->configure(
 
    my ( $first, $second ) = @pending;
 
-   my $response;
-   $response = HTTP::Response->new( 200 );
-   $response->add_content( "Response to second" );
-   $second->respond( $response );
+   $second->write(
+      "HTTP/1.1 200 OK$CRLF" .
+      "Content-Length: 18$CRLF" .
+      $CRLF .
+      "Response to second"
+   );
+   $second->done;
 
-   $response = HTTP::Response->new( 200 );
-   $response->add_content( "Response to first" );
-   $first->respond( $response );
+   $first->write(
+      "HTTP/1.1 200 OK$CRLF" .
+      "Content-Length: 17$CRLF" .
+      $CRLF .
+      "Response to first"
+   );
+   $first->done;
 
    my $buffer = "";
    wait_for_stream { $buffer =~ m/$CRLF$CRLF.*$CRLF$CRLF/s } $client => $buffer;

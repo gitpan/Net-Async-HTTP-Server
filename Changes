@@ -1,5 +1,11 @@
 Revision history for Net-Async-HTTP-Server
 
+0.03    CHANGES:
+         * Implement PSGI container subclass and Plack::Handler:: module
+         * Added more accessors for request fields
+         * Reworked chunked response streaming API
+         * Don't force a Content-Length header in normal operation
+
 0.02    CHANGES:
          * Changed request/response API - new NaHTTP::Server::Request objects
          * Added response streaming with HTTP/1.1 chunked encoding

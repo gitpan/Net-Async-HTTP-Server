@@ -8,7 +8,7 @@ package Net::Async::HTTP::Server::Request;
 use strict;
 use warnings;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use Carp;
 
@@ -35,6 +35,7 @@ sub new
       conn => $conn,
       req  => $request,
 
+      pending => [],
       is_done => 0,
    }, $class;
 }
@@ -67,6 +68,18 @@ sub path
    return $self->{req}->uri->path;
 }
 
+=head2 $query_string = $request->query_string
+
+Return the query string from the request header.
+
+=cut
+
+sub query_string
+{
+   my $self = shift;
+   return $self->{req}->uri->query;
+}
+
 =head2 $protocol = $request->protocol
 
 Return the protocol version from the request header. This will be the full
@@ -80,6 +93,19 @@ sub protocol
    return $self->{req}->protocol;
 }
 
+=head2 $value = $request->header( $key )
+
+Return the value of a request header.
+
+=cut
+
+sub header
+{
+   my $self = shift;
+   my ( $key ) = @_;
+   return $self->{req}->header( $key );
+}
+
 =head2 $body = $request->body
 
 Return the body content from the request as a string of bytes.
@@ -90,6 +116,87 @@ sub body
 {
    my $self = shift;
    return $self->{req}->content;
+}
+
+# Called by NaHTTP::Server::Protocol
+sub _write_to_stream
+{
+   my $self = shift;
+   my ( $stream ) = @_;
+
+   while( my $next = shift @{ $self->{pending} } ) {
+      $stream->write( $next,
+         $self->protocol eq "HTTP/1.0" ?
+            ( on_flush => sub { $stream->close } ) :
+            (),
+      );
+   }
+
+   return $self->{is_done};
+}
+
+=head2 $request->write( $data )
+
+Append more data to the response to be written to the client. C<$data> can
+either be a plain string, or a C<CODE> reference to be used in the underlying
+L<IO::Async::Stream>'s C<write> method.
+
+=cut
+
+sub write
+{
+   my $self = shift;
+   my ( $data ) = @_;
+
+   $self->{is_done} and croak "This request has already been completed";
+
+   push @{ $self->{pending} }, $data;
+   $self->{conn}->_flush_requests;
+}
+
+=head2 $request->write_chunk( $data )
+
+Append more data to the response in the form of an HTTP chunked-transfer
+chunk. This convenience is a shortcut wrapper for prepending the chunk header.
+
+=cut
+
+sub write_chunk
+{
+   my $self = shift;
+   my ( $data ) = @_;
+
+   $self->write( sprintf "%X$CRLF%s$CRLF", length $data, $data );
+}
+
+=head2 $request->done
+
+Marks this response as completed.
+
+=cut
+
+sub done
+{
+   my $self = shift;
+
+   $self->{is_done} and croak "This request has already been completed";
+
+   $self->{is_done} = 1;
+   $self->{conn}->_flush_requests;
+}
+
+=head2 $request->write_chunk_eof
+
+Sends the final EOF chunk and marks this response as completed.
+
+=cut
+
+sub write_chunk_eof
+{
+   my $self = shift;
+
+   $self->write( "0$CRLF$CRLF" );
+   $self->done;
 }
 
 =head2 $req = $request->as_http_request
@@ -115,31 +222,22 @@ sub respond
    my $self = shift;
    my ( $response ) = @_;
 
-   $self->{is_done} and croak "This request has already been completed";
-
    defined $response->protocol or
       $response->protocol( $self->protocol );
-   defined $response->content_length or
-      $response->content_length( length $response->content );
 
-   $self->{response} = $response->as_string( $CRLF );
-   $self->{is_done}  = 1;
-
-   $self->{conn}->_flush_responders;
+   $self->write( $response->as_string( $CRLF ) );
+   $self->done;
 }
 
 =head2 $request->respond_chunk_header( $response )
-
-=head2 $request->respond_chunk( $data )
-
-=head2 $request->respond_chunk_eof
 
 Respond to the request using the given L<HTTP::Response> object to send in
 HTTP/1.1 chunked encoding mode.
 
 The headers in the C<$response> will be sent (which will be modified to set
-the C<Transfer-Encoding> header). Each call to C<respond_chunk> will send
-another chunk of data. C<respond_chunk_eof> will send the final EOF chunk.
+the C<Transfer-Encoding> header). Each call to C<write_chunk> will send
+another chunk of data. C<write_chunk_eof> will send the final EOF chunk and
+mark the request as complete.
 
 If the C<$response> already contained content, that will be sent as one chunk
 immediately after the header is sent.
@@ -151,8 +249,6 @@ sub respond_chunk_header
    my $self = shift;
    my ( $response ) = @_;
 
-   $self->{is_done} and croak "This request has already been completed";
-
    defined $response->protocol or
       $response->protocol( $self->protocol );
    defined $response->header( "Transfer-Encoding" ) or
@@ -160,37 +256,28 @@ sub respond_chunk_header
 
    my $content = $response->content;
 
-   $self->{response} = $response->as_string( $CRLF );
+   my $header = $response->as_string( $CRLF );
    # Trim any content from the header as it would need to be chunked
-   $self->{response} =~ s/$CRLF$CRLF.*$/$CRLF$CRLF/s;
+   $header =~ s/$CRLF$CRLF.*$/$CRLF$CRLF/s;
 
-   $self->{conn}->_flush_responders;
+   $self->write( $header );
 
-   $self->respond_chunk( $response->content ) if length $response->content;
+   $self->write_chunk( $response->content ) if length $response->content;
 }
 
-sub respond_chunk
+=head2 $stream = $request->stream
+
+Returns the L<IO::Async::Stream> object representing this connection. Usually
+this would be used for such things as inspecting the client's connection
+address on the C<read_handle> of the stream. It should not be necessary to
+directly perform IO operations on this stream itself.
+
+=cut
+
+sub stream
 {
    my $self = shift;
-   my ( $data ) = @_;
-
-   $self->{is_done} and croak "This request has already been completed";
-
-   $self->{response} .= sprintf "%X$CRLF%s$CRLF", length $data, $data;
-
-   $self->{conn}->_flush_responders;
-}
-
-sub respond_chunk_eof
-{
-   my $self = shift;
-
-   $self->{is_done} and croak "This request has already been completed";
-
-   $self->{response} .= "0$CRLF$CRLF";
-   $self->{is_done} = 1;
-
-   $self->{conn}->_flush_responders;
+   return $self->{conn}->transport;
 }
 
 =head1 AUTHOR
