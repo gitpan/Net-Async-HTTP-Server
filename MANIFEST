@@ -22,4 +22,5 @@ t/02respond-chunked.t
 t/03respond-code.t
 t/10request-HTTP.t
 t/40psgi.t
+t/41psgi-streaming.t
 t/99pod.t

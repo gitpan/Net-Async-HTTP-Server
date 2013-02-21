@@ -71,6 +71,10 @@ sub connect_client
    is( $req->query_string, "var=value", '$req->query_string' );
    is( $req->protocol, "HTTP/1.1", '$req->protocol' );
    is( $req->header( "User-Agent" ), "unit-test", '$req->header' );
+
+   is_deeply( [ $req->headers ],
+              [ [ "User-Agent" => "unit-test" ] ],
+              '$req->headers' );
 }
 
 {

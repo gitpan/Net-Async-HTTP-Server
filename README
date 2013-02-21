@@ -48,8 +48,6 @@ TODO
 
     * Consider how to do streaming request inbound
 
-    * PSGI app container
-
     * Lots more testing
 
 AUTHOR

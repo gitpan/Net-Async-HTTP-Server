@@ -8,7 +8,7 @@ package Net::Async::HTTP::Server::Request;
 use strict;
 use warnings;
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use Carp;
 
@@ -104,6 +104,26 @@ sub header
    my $self = shift;
    my ( $key ) = @_;
    return $self->{req}->header( $key );
+}
+
+=head2 @headers = $request->headers
+
+Returns a list of 2-element C<ARRAY> refs containing all the request headers.
+Each referenced array contains, in order, the name and the value.
+
+=cut
+
+sub headers
+{
+   my $self = shift;
+   my @headers;
+
+   $self->{req}->scan( sub {
+      my ( $name, $value ) = @_;
+      push @headers, [ $name, $value ];
+   } );
+
+   return @headers;
 }
 
 =head2 $body = $request->body

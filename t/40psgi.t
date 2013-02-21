@@ -1,9 +1,9 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 
 use strict;
-use lib 't/lib';
+use warnings;
 
-use Test::More tests => 16;
+use Test::More;
 use Test::Identity;
 
 use IO::Async::Loop;
@@ -57,6 +57,7 @@ my $C = IO::Socket::INET->new(
 
    $C->write(
       "GET / HTTP/1.1$CRLF" .
+      "User-Agent: unittest$CRLF" .
       $CRLF
    );
 
@@ -83,6 +84,8 @@ my $C = IO::Socket::INET->new(
          SERVER_PORT     => $server->read_handle->sockport,
          SERVER_PROTOCOL => "HTTP/1.1",
 
+         HTTP_USER_AGENT => "unittest",
+
          'psgi.version'      => [1,0],
          'psgi.url_scheme'   => "http",
          'psgi.run_once'     => 0,
@@ -108,8 +111,9 @@ my $C = IO::Socket::INET->new(
 }
 
 {
+   my $received_env;
    $server->configure( app => sub {
-      my $env = shift;
+      my $env = $received_env = shift;
       my $input = delete $env->{'psgi.input'};
 
       my $content = "";
@@ -127,6 +131,7 @@ my $C = IO::Socket::INET->new(
    $C->syswrite(
       "GET / HTTP/1.1$CRLF" .
       "Content-Length: 18$CRLF" .
+      "Content-Type: text/plain$CRLF" .
       $CRLF .
       "Some data on STDIN"
    );
@@ -142,120 +147,12 @@ my $C = IO::Socket::INET->new(
    wait_for_stream { length $buffer >= length $expect } $C => $buffer;
 
    is( $buffer, $expect, 'Received ARRAY-written response with stdin reading' );
+
+   is( $received_env->{CONTENT_LENGTH}, 18, '$env->{CONTENT_LENGTH}' );
+   ok( !exists $received_env->{HTTP_CONTENT_LENGTH}, 'no HTTP_CONTENT_LENGTH' );
+
+   is( $received_env->{CONTENT_TYPE}, "text/plain", '$env->{CONTENT_TYPE}' );
+   ok( !exists $received_env->{HTTP_CONTENT_TYPE}, 'no HTTP_CONTENT_TYPE' );
 }
 
-{
-   $server->configure( app => sub {
-      my $env = shift;
-
-      open my $body, "<", \"Here is a IO-like string";
-
-      return [
-         200,
-         [ "Content-Type" => "text/plain" ],
-         $body,
-      ];
-   } );
-
-   $C->syswrite(
-      "GET / HTTP/1.1$CRLF" .
-      $CRLF
-   );
-
-   my $expect = join( "", map "$_$CRLF",
-         "HTTP/1.1 200 OK",
-         "Transfer-Encoding: chunked",
-         "Content-Type: text/plain",
-         '' ) .
-      "18$CRLF" . "Here is a IO-like string" . $CRLF .
-      "0$CRLF$CRLF";
-
-   my $buffer = "";
-   wait_for_stream { length $buffer >= length $expect } $C => $buffer;
-
-   is( $buffer, $expect, 'Received IO-written response' );
-}
-
-{
-   my $responder;
-   $server->configure( app => sub {
-      my $env = shift;
-      return sub { $responder = shift };
-   } );
-
-   $C->syswrite(
-      "GET / HTTP/1.1$CRLF" .
-      $CRLF
-   );
-
-   wait_for { defined $responder };
-
-   is( ref $responder, "CODE", '$responder is a CODE ref' );
-
-   $responder->(
-      [ 200, [ "Content-Type" => "text/plain" ], [ "body from responder" ] ]
-   );
-
-   my $expect = join( "", map "$_$CRLF",
-         "HTTP/1.1 200 OK",
-         "Content-Length: 19",
-         "Content-Type: text/plain",
-         '' ) .
-      "body from responder";
-
-   my $buffer = "";
-   wait_for_stream { length $buffer >= length $expect } $C => $buffer;
-
-   is( $buffer, $expect, 'Received responder-written response' );
-}
-
-{
-   my $responder;
-   $server->configure( app => sub {
-      my $env = shift;
-      return sub { $responder = shift };
-   } );
-
-   $C->syswrite(
-      "GET / HTTP/1.1$CRLF" .
-      $CRLF
-   );
-
-   wait_for { defined $responder };
-
-   is( ref $responder, "CODE", '$responder is a CODE ref' );
-
-   my $writer = $responder->(
-      [ 200, [ "Content-Type" => "text/plain" ] ]
-   );
-
-   my $expect = join( "", map "$_$CRLF",
-         "HTTP/1.1 200 OK",
-         "Transfer-Encoding: chunked",
-         "Content-Type: text/plain",
-         '' );
-
-   my $buffer = "";
-   wait_for_stream { length $buffer >= length $expect } $C => $buffer;
-
-   is( $buffer, $expect, 'Received responder-written header' );
-
-   $buffer =~ s/^.*$CRLF$CRLF//s;
-
-   $writer->write( "Some body " );
-
-   $expect = "A${CRLF}Some body $CRLF";
-   wait_for_stream { length $buffer >= length $expect } $C => $buffer;
-   is( $buffer, "A${CRLF}Some body $CRLF", 'Received partial streamed body chunk' );
-   $buffer = "";
-
-   $writer->write( "content here" );
-   $writer->close;
-
-   $expect = "C${CRLF}content here$CRLF" .
-             "0${CRLF}${CRLF}";
-   wait_for_stream { length $buffer >= length $expect } $C => $buffer;
-
-   is( $buffer, $expect, 'Received streamed body chunk and EOF' );
-   $buffer = "";
-}
+done_testing;

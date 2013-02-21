@@ -1,5 +1,11 @@
 Revision history for Net-Async-HTTP-Server
 
+0.04    CHANGES:
+         * Provide access to all the HTTP headers via ->headers method
+         * Set HTTP headers in PSGI environment
+         * Remember not to write content using chunked transfer encoding when
+           that mode isn't actually set
+
 0.03    CHANGES:
          * Implement PSGI container subclass and Plack::Handler:: module
          * Added more accessors for request fields

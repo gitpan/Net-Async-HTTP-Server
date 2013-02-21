@@ -12,7 +12,7 @@ use Carp;
 
 use base qw( Net::Async::HTTP::Server );
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use HTTP::Response;
 
@@ -57,6 +57,14 @@ L<PSGI> application to respond to requests. It acts as a gateway between the
 HTTP connection from the web client, and the C<PSGI> application. Aside from
 the use of C<PSGI> instead of the C<on_request> event, this class behaves
 similarly to C<Net::Async::HTTP::Server>.
+
+To handle the content length when sending responses, the PSGI implementation
+may add a header to the response. When sending a plain C<ARRAY> of strings, if
+a C<Content-Length> header is absent, the length will be calculated by taking
+the total of all the strings in the array, and setting the length header. When
+sending content from an IO reference or using the streaming responder C<CODE>
+reference, the C<Transfer-Encoding> header will be set to C<chunked>, and all
+writes will be performed as C<HTTP/1.1> chunks.
 
 =cut
 
@@ -150,6 +158,17 @@ sub on_request
       'io.async.loop'             => $self->get_loop,
    );
 
+   foreach ( $req->headers ) {
+      my ( $name, $value ) = @$_;
+      $name =~ s/-/_/g;
+      $name = uc $name;
+
+      # Content-Length and Content-Type don't get HTTP_ prefix
+      $name = "HTTP_$name" unless $name =~ m/^CONTENT_(?:LENGTH|TYPE)$/;
+
+      $env{$name} = $value;
+   }
+
    my $resp = $self->{app}->( \%env );
 
    my $responder = sub {
@@ -159,10 +178,12 @@ sub on_request
       $response->protocol( $req->protocol );
 
       my $has_content_length = 0;
+      my $use_chunked_transfer;
       while( my ( $key, $value ) = splice @$headers, 0, 2 ) {
          $response->header( $key, $value );
 
          $has_content_length = 1 if $key eq "Content-Length";
+         $use_chunked_transfer++ if $key eq "Transfer-Encoding" and $value eq "chunked";
       }
 
       if( !defined $body ) {
@@ -170,11 +191,14 @@ sub on_request
 
          unless( $has_content_length ) {
             $response->header( "Transfer-Encoding" => "chunked" );
+            $use_chunked_transfer++;
          }
 
          $req->write( $response->as_string( $CRLF ) );
 
-         return Net::Async::HTTP::Server::PSGI::WriterStream->new( $req );
+         return $use_chunked_transfer ?
+            Net::Async::HTTP::Server::PSGI::ChunkWriterStream->new( $req ) :
+            Net::Async::HTTP::Server::PSGI::WriterStream->new( $req );
       }
       elsif( ref $body eq "ARRAY" ) {
          unless( $has_content_length ) {
@@ -191,12 +215,13 @@ sub on_request
       else {
          unless( $has_content_length ) {
             $response->header( "Transfer-Encoding" => "chunked" );
+            $use_chunked_transfer++;
          }
 
          $req->write( $response->as_string( $CRLF ) );
 
-         $req->write(
-            sub {
+         if( $use_chunked_transfer ) {
+            $req->write( sub {
                # We can't return the EOF chunk and set undef in one go
                # What we'll have to do is send the EOF chunk then clear $body,
                # which indicates end
@@ -212,8 +237,20 @@ sub on_request
                $body->close;
                undef $body;
                return "0$CRLF$CRLF";
-            }
-         );
+            } );
+         }
+         else {
+            $req->write( sub {
+               local $/ = \8192;
+               my $buffer = $body->getline;
+
+               defined $buffer and return $buffer;
+
+               $body->close;
+               return undef;
+            } );
+         }
+
          $req->done;
       }
    };
@@ -229,6 +266,19 @@ sub on_request
 # Hide from indexer
 package
    Net::Async::HTTP::Server::PSGI::WriterStream;
+
+sub new
+{
+   my $class = shift;
+   return bless [ @_ ], $class;
+}
+
+sub write { shift->[0]->write( $_[0] ) }
+sub close { shift->[0]->done }
+
+# Hide from indexer
+package
+   Net::Async::HTTP::Server::PSGI::ChunkWriterStream;
 
 sub new
 {

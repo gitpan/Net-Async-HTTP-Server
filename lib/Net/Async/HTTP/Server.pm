@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Listener );
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use Carp;
 
@@ -93,17 +93,13 @@ sub on_stream
 {
    my $self = shift;
    my ( $stream ) = @_;
- 
+
    my $conn = Net::Async::HTTP::Server::Protocol->new(
       transport => $stream,
-#      on_closed => $self->_capture_weakself( sub {
-#         my $self = shift;
-#         $self->remove_child( $_[0] );
-#      } ),
    );
- 
+
    $self->add_child( $conn );
- 
+
    return $conn;
 }
 
@@ -126,10 +122,6 @@ Don't use L<HTTP::Message> objects as underlying implementation
 =item *
 
 Consider how to do streaming request inbound
-
-=item *
-
-PSGI app container
 
 =item *
 
