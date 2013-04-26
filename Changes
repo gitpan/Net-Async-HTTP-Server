@@ -1,5 +1,9 @@
 Revision history for Net-Async-HTTP-Server
 
+0.05    CHANGES:
+         * Set PATH_INFO correctly in PSGI environment
+         * More unit testing - test crosslink with NaHTTP
+
 0.04    CHANGES:
          * Provide access to all the HTTP headers via ->headers method
          * Set HTTP headers in PSGI environment

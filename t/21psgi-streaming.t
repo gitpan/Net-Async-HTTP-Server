@@ -4,7 +4,6 @@ use strict;
 use warnings;
 
 use Test::More;
-use Test::Identity;
 
 use IO::Async::Loop;
 use IO::Async::Test;

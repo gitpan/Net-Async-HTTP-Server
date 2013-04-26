@@ -12,7 +12,7 @@ use Carp;
 
 use base qw( Net::Async::HTTP::Server );
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 use HTTP::Response;
 
@@ -106,7 +106,7 @@ The C<Net::Async::HTTP::Server::PSGI> object serving the request
 
 =item C<net.async.http.server.req>
 
-The L<Net::Async::HTTP::Request> object representing this particular
+The L<Net::Async::HTTP::Server::Request> object representing this particular
 request
 
 =item C<io.async.loop>
@@ -129,7 +129,8 @@ sub on_request
 
    my $socket = $req->stream->read_handle;
 
-   ( my $path_info = $req->path ) =~ s{^/}{};
+   my $path_info = $req->path;
+   $path_info = "" if $path_info eq "/";
 
    my %env = (
       SERVER_PORT         => $socket->sockport,

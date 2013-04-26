@@ -13,7 +13,8 @@ my $build = Module::Build->new(
    build_requires => {
       'HTTP::Response' => 0,
       'IO::Async::Test' => 0,
-      'Test::More' => 0,
+      'Test::Identity' => 0,
+      'Test::More' => '0.88', # done_testing
    },
    auto_configure_requires => 0, # Don't add M::B to configure_requires
    license => 'perl',

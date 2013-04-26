@@ -10,7 +10,8 @@ WriteMakefile
                    'IO::Async' => '0.54',
                    'IO::Async::Listener' => 0,
                    'IO::Async::Test' => 0,
-                   'Test::More' => 0
+                   'Test::Identity' => 0,
+                   'Test::More' => '0.88'
                  },
   'INSTALLDIRS' => 'site',
   'EXE_FILES' => [],

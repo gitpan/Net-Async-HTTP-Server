@@ -21,6 +21,10 @@ t/01respond.t
 t/02respond-chunked.t
 t/03respond-code.t
 t/10request-HTTP.t
-t/40psgi.t
-t/41psgi-streaming.t
+t/20psgi.t
+t/21psgi-streaming.t
+t/80cross-http.t
+t/81cross-https.t
 t/99pod.t
+t/privkey.pem
+t/server.pem

@@ -111,6 +111,21 @@ my $C = IO::Socket::INET->new(
 }
 
 {
+   undef $received_env;
+   $C->write(
+      "GET /path/here HTTP/1.1$CRLF" .
+      "User-Agent: unittest$CRLF" .
+      $CRLF
+   );
+
+   wait_for { defined $received_env };
+   is( $received_env->{PATH_INFO}, "/path/here", 'PATH_INFO for non-root path' );
+
+   my $buffer = "";
+   wait_for_stream { $buffer =~ m/$CRLF$CRLF/ } $C => $buffer;
+}
+
+{
    my $received_env;
    $server->configure( app => sub {
       my $env = $received_env = shift;

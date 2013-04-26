@@ -18,7 +18,8 @@
          "requires" : {
             "HTTP::Response" : "0",
             "IO::Async::Test" : "0",
-            "Test::More" : "0"
+            "Test::Identity" : "0",
+            "Test::More" : "0.88"
          }
       },
       "runtime" : {
@@ -32,23 +33,23 @@
    "provides" : {
       "Net::Async::HTTP::Server" : {
          "file" : "lib/Net/Async/HTTP/Server.pm",
-         "version" : "0.04"
+         "version" : "0.05"
       },
       "Net::Async::HTTP::Server::PSGI" : {
          "file" : "lib/Net/Async/HTTP/Server/PSGI.pm",
-         "version" : "0.04"
+         "version" : "0.05"
       },
       "Net::Async::HTTP::Server::Protocol" : {
          "file" : "lib/Net/Async/HTTP/Server/Protocol.pm",
-         "version" : "0.04"
+         "version" : "0.05"
       },
       "Net::Async::HTTP::Server::Request" : {
          "file" : "lib/Net/Async/HTTP/Server/Request.pm",
-         "version" : "0.04"
+         "version" : "0.05"
       },
       "Plack::Handler::Net::Async::HTTP::Server" : {
          "file" : "lib/Plack/Handler/Net/Async/HTTP/Server.pm",
-         "version" : "0.04"
+         "version" : "0.05"
       }
    },
    "release_status" : "stable",
@@ -57,5 +58,5 @@
          "http://dev.perl.org/licenses/"
       ]
    },
-   "version" : "0.04"
+   "version" : "0.05"
 }
