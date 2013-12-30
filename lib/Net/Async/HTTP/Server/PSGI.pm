@@ -12,7 +12,7 @@ use Carp;
 
 use base qw( Net::Async::HTTP::Server );
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 use HTTP::Response;
 
@@ -100,6 +100,14 @@ The following extra keys are supplied to the environment of the C<PSGI> app:
 
 =over 8
 
+=item C<psgix.io>
+
+The actual L<IO::Socket> filehandle that the request was received on.
+
+If the server is running under SSL for HTTPS, this will be an
+L<IO::Socket::SSL> instance, so reading from or writing to it will happen in
+cleartext.
+
 =item C<net.async.http.server>
 
 The C<Net::Async::HTTP::Server::PSGI> object serving the request
@@ -154,6 +162,8 @@ sub on_request
       'psgi.streaming'    => 1,
 
       # Extensions
+      'psgix.io'                  => $socket,
+      'psgix.input.buffered'      => 1, # we're using a PerlIO scalar handle
       'net.async.http.server'     => $self,
       'net.async.http.server.req' => $req,
       'io.async.loop'             => $self->get_loop,

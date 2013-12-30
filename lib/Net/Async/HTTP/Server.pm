@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Listener );
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 use Carp;
 
@@ -36,6 +36,7 @@ C<Net::Async::HTTP::Server> - serve HTTP with C<IO::Async>
        my $response = HTTP::Response->new( 200 );
        $response->add_content( "Hello, world!\n" );
        $response->content_type( "text/plain" );
+       $response->content_length( length $response->content );
 
        $req->respond( $response );
     },

@@ -17,6 +17,7 @@ SYNOPSIS
            my $response = HTTP::Response->new( 200 );
            $response->add_content( "Hello, world!\n" );
            $response->content_type( "text/plain" );
+           $response->content_length( length $response->content );
 
            $req->respond( $response );
         },

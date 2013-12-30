@@ -8,7 +8,7 @@ package Net::Async::HTTP::Server::Request;
 use strict;
 use warnings;
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 use Carp;
 
@@ -37,12 +37,33 @@ sub new
 
       pending => [],
       is_done => 0,
+      is_closed => 0,
    }, $class;
 }
 
 =head1 METHODS
 
 =cut
+
+=head2 $is_closed = $request->is_closed
+
+Returns true if the underlying network connection for this request has already
+been closed. If this is the case, the application is free to drop the request
+object and perform no further processing on it.
+
+=cut
+
+sub _close
+{
+   my $self = shift;
+   $self->{is_closed} = 1;
+}
+
+sub is_closed
+{
+   my $self = shift;
+   return $self->{is_closed};
+}
 
 =head2 $method = $request->method
 
@@ -168,6 +189,8 @@ sub write
    my $self = shift;
    my ( $data ) = @_;
 
+   return if $self->{is_closed};
+
    $self->{is_done} and croak "This request has already been completed";
 
    push @{ $self->{pending} }, $data;
@@ -186,6 +209,8 @@ sub write_chunk
    my $self = shift;
    my ( $data ) = @_;
 
+   return if $self->{is_closed};
+
    $self->write( sprintf "%X$CRLF%s$CRLF", length $data, $data );
 }
 
@@ -198,6 +223,8 @@ Marks this response as completed.
 sub done
 {
    my $self = shift;
+
+   return if $self->{is_closed};
 
    $self->{is_done} and croak "This request has already been completed";
 
@@ -214,6 +241,8 @@ Sends the final EOF chunk and marks this response as completed.
 sub write_chunk_eof
 {
    my $self = shift;
+
+   return if $self->{is_closed};
 
    $self->write( "0$CRLF$CRLF" );
    $self->done;

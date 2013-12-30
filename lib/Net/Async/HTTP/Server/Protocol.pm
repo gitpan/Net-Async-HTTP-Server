@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Protocol::Stream );
 
-our $VERSION = '0.05';
+our $VERSION = '0.06';
 
 use Carp;
 
@@ -24,12 +24,16 @@ sub on_read
    my $self = shift;
    my ( $buffref, $eof ) = @_;
 
+   return 0 if $eof;
+
    return 0 unless $$buffref =~ s/^(.*?$CRLF$CRLF)//s;
    my $header = $1;
 
    my $request = HTTP::Request->parse( $header );
    my $request_body_len = $request->content_length || 0;
    return sub {
+      my ( undef, $buffref, $eof ) = @_;
+
       return 0 unless length($$buffref) >= $request_body_len;
 
       $request->add_content( substr( $$buffref, 0, $request_body_len, "" ) );
@@ -39,6 +43,14 @@ sub on_read
 
       return undef;
    };
+}
+
+sub on_closed
+{
+   my $self = shift;
+
+   $_->_close for @{ $self->{requests} };
+   undef @{ $self->{requests} };
 }
 
 sub _flush_requests

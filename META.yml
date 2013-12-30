@@ -8,7 +8,7 @@ build_requires:
   Test::Identity: 0
   Test::More: 0.88
 dynamic_config: 1
-generated_by: 'Module::Build version 0.4001, CPAN::Meta::Converter version 2.120921'
+generated_by: 'Module::Build version 0.4202, CPAN::Meta::Converter version 2.133380'
 license: perl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -17,23 +17,23 @@ name: Net-Async-HTTP-Server
 provides:
   Net::Async::HTTP::Server:
     file: lib/Net/Async/HTTP/Server.pm
-    version: 0.05
+    version: 0.06
   Net::Async::HTTP::Server::PSGI:
     file: lib/Net/Async/HTTP/Server/PSGI.pm
-    version: 0.05
+    version: 0.06
   Net::Async::HTTP::Server::Protocol:
     file: lib/Net/Async/HTTP/Server/Protocol.pm
-    version: 0.05
+    version: 0.06
   Net::Async::HTTP::Server::Request:
     file: lib/Net/Async/HTTP/Server/Request.pm
-    version: 0.05
+    version: 0.06
   Plack::Handler::Net::Async::HTTP::Server:
     file: lib/Plack/Handler/Net/Async/HTTP/Server.pm
-    version: 0.05
+    version: 0.06
 requires:
   HTTP::Request: 0
   IO::Async: 0.54
   IO::Async::Listener: 0
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.05
+version: 0.06

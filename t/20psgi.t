@@ -67,6 +67,8 @@ my $C = IO::Socket::INET->new(
    ok( defined(delete $received_env->{'psgi.input'}), "psgi.input exists" );
    ok( defined(delete $received_env->{'psgi.errors'}), "psgi.errors exists" );
 
+   isa_ok( delete $received_env->{'psgix.io'}, "IO::Socket", 'psgix.io' );
+
    identical( delete $received_env->{'net.async.http.server'}, $server, "net.async.http.server is \$server" );
    can_ok( delete $received_env->{'net.async.http.server.req'}, "header" );
    identical( delete $received_env->{'io.async.loop'}, $loop, "io.async.loop is \$loop" );
@@ -93,6 +95,8 @@ my $C = IO::Socket::INET->new(
          'psgi.multithread'  => 0,
          'psgi.streaming'    => 1,
          'psgi.nonblocking'  => 1,
+
+         'psgix.input.buffered' => 1,
       },
       'received $env in PSGI app'
    );
