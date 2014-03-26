@@ -8,7 +8,7 @@ package Net::Async::HTTP::Server::Request;
 use strict;
 use warnings;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 use Carp;
 
@@ -326,7 +326,7 @@ directly perform IO operations on this stream itself.
 sub stream
 {
    my $self = shift;
-   return $self->{conn}->transport;
+   return $self->{conn};
 }
 
 =head1 AUTHOR

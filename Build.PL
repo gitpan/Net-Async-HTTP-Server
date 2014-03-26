@@ -8,7 +8,7 @@ my $build = Module::Build->new(
    requires => {
       'HTTP::Request' => 0,
       'IO::Async' => '0.54',
-      'IO::Async::Listener' => 0,
+      'IO::Async::Listener' => '0.61',
    },
    build_requires => {
       'HTTP::Response' => 0,

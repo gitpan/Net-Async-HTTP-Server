@@ -28,7 +28,7 @@ $loop->add( $server );
 sub connect_client
 {
    my ( $S1, $S2 ) = IO::Async::OS->socketpair( undef, "stream" );
-   $server->on_stream( IO::Async::Stream->new( handle => $S2 ) );
+   $server->on_accept( Net::Async::HTTP::Server::Protocol->new( handle => $S2 ) );
    return $S1;
 }
 

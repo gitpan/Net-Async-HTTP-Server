@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2013 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2013-2014 -- leonerd@leonerd.org.uk
 
 package Plack::Handler::Net::Async::HTTP::Server;
 
@@ -11,7 +11,7 @@ use warnings;
 use Net::Async::HTTP::Server::PSGI;
 use IO::Async::Loop;
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 =head1 NAME
 
@@ -38,6 +38,14 @@ HTTP daemon under L<IO::Async>, by using L<Net::Async::HTTP::Server>.
 
 This is internally implemented using L<Net::Async::HTTP::Server::PSGI>;
 further information on environment etc.. is documented there.
+
+If L<IO::Async::SSL> is available, this handler supports accepting connections
+via C<https>
+
+ plackup -s Net::Async::HTTP::Server --ssl ...
+
+Any other options whose names start C<ssl_> will be passed on to the SSL
+listen method.
 
 =cut
 
@@ -94,6 +102,10 @@ sub new
       map { $_ => delete $opts{$_} } qw( listen server_ready socket queuesize ),
    }, $class;
 
+   # Grab all of the SSL options
+   $self->{ssl} = 1 if exists $opts{ssl}; delete $opts{ssl};
+   $self->{$_} = delete $opts{$_} for grep m/^ssl_/, keys %opts;
+
    keys %opts and die "Unrecognised keys " . join( ", ", sort keys %opts );
 
    return $self;
@@ -138,27 +150,39 @@ sub run
       else {
          my ( $host, $service ) = $listen =~ m/^(.*):(.*?)$/;
 
+         my %SSL_args;
+         if( $self->{ssl} ) {
+            require IO::Async::SSL;
+            %SSL_args = (
+               extensions => [qw( SSL )],
+            );
+
+            foreach my $key ( grep m/^ssl_/, keys %$self ) {
+               my $val = $self->{$key};
+               # IO::Async::Listener extension wants uppercase "SSL"
+               $key =~ s/^ssl/SSL/;
+
+               $SSL_args{$key} = $val;
+            };
+         }
+
          $httpserver->listen(
             host     => $host,
             service  => $service,
             socktype => "stream",
             queuesize => $queuesize,
 
+            %SSL_args,
+
             on_notifier => sub {
                $self->{server_ready}->( {
                   host            => $host,
                   port            => $service,
+                  proto           => $self->{ssl} ? "https" : "http",
                   server_software => ref $self,
                } ) if $self->{server_ready};
             },
-
-            on_resolve_error => sub {
-               die "Cannot resolve - $_[-1]\n";
-            },
-            on_listen_error => sub {
-               die "Cannot listen - $_[-1]\n";
-            },
-         );
+         )->get;
       }
    }
 

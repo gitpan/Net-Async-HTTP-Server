@@ -12,7 +12,7 @@ use Carp;
 
 use base qw( Net::Async::HTTP::Server );
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 use HTTP::Response;
 

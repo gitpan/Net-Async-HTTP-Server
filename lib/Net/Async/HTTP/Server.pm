@@ -1,15 +1,16 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2013 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2013-2014 -- leonerd@leonerd.org.uk
 
 package Net::Async::HTTP::Server;
 
 use strict;
 use warnings;
 use base qw( IO::Async::Listener );
+IO::Async::Listener->VERSION( '0.61' );
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 use Carp;
 
@@ -58,6 +59,9 @@ part of a program based on L<IO::Async>. An object in this class listens on a
 single port and invokes the C<on_request> callback or subclass method whenever
 an HTTP request is received, allowing the program to respond to it.
 
+For accepting HTTP connections via L<PSGI> and L<Plack>, see also
+L<Plack::Handler::Net::Async::HTTP::Server>.
+
 =cut
 
 =head1 EVENTS
@@ -68,6 +72,16 @@ Invoked when a new HTTP request is received. It will be passed a
 L<Net::Async::HTTP::Server::Request> object.
 
 =cut
+
+sub _init
+{
+   my $self = shift;
+   my ( $params ) = @_;
+
+   $params->{handle_class} = "Net::Async::HTTP::Server::Protocol";
+
+   $self->SUPER::_init( $params );
+}
 
 sub configure
 {
@@ -90,13 +104,18 @@ sub _add_to_loop
    $self->SUPER::_add_to_loop( @_ );
 }
 
-sub on_stream
+sub on_accept
 {
    my $self = shift;
-   my ( $stream ) = @_;
+   my ( $conn ) = @_;
 
-   my $conn = Net::Async::HTTP::Server::Protocol->new(
-      transport => $stream,
+   $conn->configure(
+      on_closed => sub {
+         my $conn = shift;
+         $conn->on_closed();
+
+         $conn->remove_from_parent;
+      },
    );
 
    $self->add_child( $conn );

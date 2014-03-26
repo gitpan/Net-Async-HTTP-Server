@@ -51,10 +51,7 @@ $server->listen(
       $host = $socket->sockhost;
       $port = $socket->sockport;
    },
-   on_listen_error => sub { die "Cannot listen - $_[-1]\n" },
-);
-
-wait_for { defined $host and defined $port };
+)->get;
 
 my $response;
 

@@ -42,12 +42,16 @@ $loop->add( $server );
 sub connect_client
 {
    my ( $S1, $S2 ) = IO::Async::OS->socketpair( undef, "stream" );
-   $server->on_stream( IO::Async::Stream->new( handle => $S2 ) );
+   $server->on_accept( Net::Async::HTTP::Server::Protocol->new( handle => $S2 ) );
    return $S1;
 }
 
 {
+   my $base_notifiers = $loop->notifiers;
+
    my $client = connect_client;
+
+   is( scalar $loop->notifiers, $base_notifiers + 1, '$loop gains one Notifier after connect' );
 
    $client->write(
       "GET /path?var=value HTTP/1.1$CRLF" .
@@ -75,6 +79,12 @@ sub connect_client
    is_deeply( [ $req->headers ],
               [ [ "User-Agent" => "unit-test" ] ],
               '$req->headers' );
+
+   $client->close;
+
+   $loop->loop_once( 0.01 ) for 1 .. 3;
+
+   is( scalar $loop->notifiers, $base_notifiers, '$loop back to base level after $client->close' );
 }
 
 {

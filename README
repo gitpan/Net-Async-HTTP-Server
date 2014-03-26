@@ -39,6 +39,9 @@ DESCRIPTION
     method whenever an HTTP request is received, allowing the program to
     respond to it.
 
+    For accepting HTTP connections via PSGI and Plack, see also
+    Plack::Handler::Net::Async::HTTP::Server.
+
 EVENTS
   on_request $req
     Invoked when a new HTTP request is received. It will be passed a

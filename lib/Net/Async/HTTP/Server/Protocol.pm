@@ -1,15 +1,15 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2013 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2013-2014 -- leonerd@leonerd.org.uk
 
 package Net::Async::HTTP::Server::Protocol;
 
 use strict;
 use warnings;
-use base qw( IO::Async::Protocol::Stream );
+use base qw( IO::Async::Stream );
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 use Carp;
 
@@ -31,6 +31,9 @@ sub on_read
 
    my $request = HTTP::Request->parse( $header );
    my $request_body_len = $request->content_length || 0;
+
+   $self->debug_printf( "REQUEST %s %s", $request->method, $request->uri->path );
+
    return sub {
       my ( undef, $buffref, $eof ) = @_;
 

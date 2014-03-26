@@ -1,5 +1,18 @@
 Revision history for Net-Async-HTTP-Server
 
+0.07    2014/03/26 18:25:23
+        [CHANGES]
+         * Updated for IO::Async 0.61 - avoid IO::Async::Protocol::Stream
+         * Support ->listen on SSL extension
+         * Support listening on SSL from the Plack handler and commandline
+           (RT86436)
+
+        [BUGFIXES]
+         * Ensure that closed client connections get removed properly
+           (RT93202)
+
+        Bugfix sponsored by NET-A-PORTER (http://www.net-a-porter.com/)
+
 0.06    2013/12/30 01:40:55
         [CHANGES]
          * Set Content-Length header in SYNOPSIS so the response actually
